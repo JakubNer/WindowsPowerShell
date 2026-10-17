@@ -49,8 +49,10 @@ models:
       - autocomplete
     defaultCompletionOptions:
       contextLength: 100352
-      maxTokens: 8192
       reasoning: false
+    requestOptions:
+      extraBodyProperties:
+        max_completion_tokens: 8192
     context:
       - provider: code
       - provider: codebase
