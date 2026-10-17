@@ -73,6 +73,7 @@ For every user request, update .jjolo.md before giving the final answer. Insert 
     Write-Host "Starting interactive Continue session. Conversation log: $sessionLog"
     Write-Host "Continue config: $continueConfig"
     Write-Host 'Expected default model: gpt-5.6-sol'
+    Write-Host 'Node heap limit for Continue: 8192 MB'
     Write-Host 'Progress and tool activity will be visible in the Continue UI.'
 
     $arguments = @(
@@ -85,7 +86,19 @@ For every user request, update .jjolo.md before giving the final answer. Insert 
         $arguments += $initialPrompt
     }
 
-    & $continueCli.Source @arguments
+    $previousNodeOptions = $env:NODE_OPTIONS
+    try {
+        $env:NODE_OPTIONS = if ($previousNodeOptions) {
+            "$previousNodeOptions --max-old-space-size=8192"
+        }
+        else {
+            '--max-old-space-size=8192'
+        }
+        & $continueCli.Source @arguments
+    }
+    finally {
+        $env:NODE_OPTIONS = $previousNodeOptions
+    }
 }
 
 if (($env:Path -split ';') -notcontains $scripts) {

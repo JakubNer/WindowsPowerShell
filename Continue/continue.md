@@ -72,22 +72,39 @@ if (-not (Test-Path -LiteralPath $destination)) {
 notepad $destination
 ```
 
-Replace `YOUR_AZURE_DEPLOYMENT_NAME` with the deployment used on that machine. Keep secrets referenced through environment variables; do not paste keys into YAML.
+Check that the Azure deployment identifiers match the template's `model:` values, following the compatibility convention below. Keep secrets referenced through environment variables; do not paste keys into YAML.
 
-## Selecting Sol or Qwen in `jjolo`
+## Azure Foundry model names: keep the `gpt-5` compatibility prefix
 
-The current `%USERPROFILE%\.continue\config.yaml` makes two chat models available:
+For this setup, keep every Azure Foundry `model:` value starting with `gpt-5` when using `provider: openai`, even when the underlying deployment serves Grok or another non-GPT-5 model. This is a compatibility workaround observed in this environment: Continue applies special GPT-5 handling based on the configured model name, and that request parameterization works with these deployments. It is not a universal naming requirement for every OpenAI-compatible provider or a claim that these backends are GPT-5.
 
-- `gpt-5.6-sol` — Azure-hosted through the OpenAI-compatible provider.
-- `qwen3.6-27b` — local model `qwen/qwen3.6-27b` at `http://localhost:1234/v1`.
+The template has three Azure entries:
 
-A test using the live config on 2026-10-17 selected **`gpt-5.6-sol`**, so Sol is currently the initial active model.
+| Continue display name (`name`) | API/deployment identifier (`model`) |
+| --- | --- |
+| `gpt-sol` | `gpt-5-sol` |
+| `gpt-astra` | `gpt-5-astra` |
+| `grok` | `gpt-5-grok` |
+
+Keep `provider: openai`, `apiType: azure`, and the `gpt-5` prefix for these entries. Their current `defaultCompletionOptions` use `maxTokens: 8192` and `reasoning: false`. Do not remove the prefix merely to reflect the backend's real model family: that can change Continue's parameter handling and reintroduce request errors.
+
+- `name:` is the display label used by Continue's model selector; it need not start with `gpt-5`.
+- `model:` is also sent as the API model/deployment identifier, not just a local display alias. The Azure endpoint must recognize it. When setting up another resource, create or use matching deployment names where supported; do not invent a client-only alias and expect Azure to route it automatically.
+- The actual backend model and version must be checked in Azure Foundry's deployment details. None of these three deployments is GPT-5 according to the current setup, despite their compatibility identifiers.
+
+**Do not use the assistant's answer to “what model are you?” as verification.** A GPT-5-prefixed configuration can lead an assistant to identify itself as GPT-5 even when the backend is different. Continue's selected label and diagnostic request model show configuration/routing, not independently verified backend identity. Earlier session answers claiming a specific model are not reliable evidence.
+
+This convention applies to the three Azure entries, not the local Qwen entry: keep Qwen's `model:` matched to LM Studio's API identifier. After changing the live configuration, exit Continue and start a new `jjolo` session; an existing process may retain the old configuration. Recheck this workaround after Continue upgrades because name-based handling can change.
+
+## Selecting Azure models or Qwen in `jjolo`
+
+The tracked template makes four chat models available: the three Azure entries above and `qwen3.6-27b`, the local model `qwen/qwen3.6-27b` at `http://localhost:1234/v1`. The live `%USERPROFILE%\.continue\config.yaml` may differ. Sol is first in the template.
 
 To switch models temporarily inside an interactive `jjolo` session:
 
 1. Start `jjolo`.
 2. Enter `/model` at the Continue prompt.
-3. Select `qwen3.6-27b` or `gpt-5.6-sol` from the model selector.
+3. Select `gpt-sol`, `gpt-astra`, `grok`, or `qwen3.6-27b` from the model selector, depending on the entries in the live configuration.
 
 The selection applies to that interactive session. The `cn --model` command-line option is not the correct switch for these local YAML entries; it adds a model package from the Continue Hub and expects a hub slug such as `owner/package`.
 
@@ -97,7 +114,7 @@ To change which model is selected initially in future sessions, open the live co
 notepad "$env:USERPROFILE\.continue\config.yaml"
 ```
 
-Move the desired model entry to the top of the `models:` list. Put `qwen3.6-27b` first to default to Qwen, or `gpt-5.6-sol` first to default to Sol. Keep both entries if `/model` switching should remain available. Make the desired model the only entry if selection must be enforced rather than merely defaulted.
+Move the desired model entry to the top of the `models:` list. Put `qwen3.6-27b` first to default to Qwen, or `gpt-sol` first to default to Sol. Keep both entries if `/model` switching should remain available. Make the desired model the only entry if selection must be enforced rather than merely defaulted.
 
 ### Running Qwen locally with LM Studio
 
@@ -173,7 +190,7 @@ If the server responds but Continue fails, check that a chat model—not only an
 
 At the time this documentation was updated, the server on this machine was running on port 1234 but `lms ps` reported **no loaded models**, and `lms ls` showed only an embedding model. Qwen therefore needs to be downloaded and loaded before the Qwen Continue entry can be used.
 
-The line printed by `Microsoft.PowerShell_profile.ps1`—`Expected default model: gpt-5.6-sol`—is informational only. If the default is changed to Qwen, update it to `Expected default model: qwen3.6-27b` so the startup message remains accurate; this text does not control model selection.
+The line currently printed by `Microsoft.PowerShell_profile.ps1`—`Expected default model: gpt-5.6-sol`—is a legacy informational label only; the template now calls that entry `gpt-sol`. If the default is changed to Qwen, update it to `Expected default model: qwen3.6-27b` so the startup message remains accurate; this text does not control model selection.
 
 To verify the initial model, run a minimal request using the same config:
 
@@ -183,11 +200,11 @@ cn --config "$env:USERPROFILE\.continue\config.yaml" -p --silent "Reply with exa
 
 Continue's normal output does not identify the model. Diagnostic logging can reveal it, but some Continue versions include API keys in `%USERPROFILE%\.continue\logs\cn.log`; do not publish that file, and rotate any key exposed through it.
 
-## Switching `jjolo` to GPT 6 Astra
+## Switching `jjolo` to Astra
 
 `jjolo` loads `%USERPROFILE%\.continue\config.yaml`. It does not currently pass a model override to `cn`, so the active model comes from the `models` list in that file.
 
-Before changing the configuration, deploy GPT 6 Astra in the Azure resource identified by `AZURE_FOUNDRY_ENDPOINT`. Record the deployment/API model identifier shown by Azure. Do not assume that the marketing or portal display name `GPT 6 Astra` is also the API identifier.
+Before changing the configuration, verify the Astra backend in the Azure resource identified by `AZURE_FOUNDRY_ENDPOINT`. Use a recognized deployment/API identifier starting with `gpt-5`, such as the template's `gpt-5-astra`, to preserve the compatibility handling described above. The deployment name does not establish the backend's actual model family or version.
 
 Open the live configuration:
 
@@ -195,13 +212,13 @@ Open the live configuration:
 notepad "$env:USERPROFILE\.continue\config.yaml"
 ```
 
-Change the existing Azure model entry as follows, substituting the exact Azure deployment/API identifier for `YOUR_GPT_6_ASTRA_DEPLOYMENT_ID`:
+Use the template's Astra entry below, provided the Azure endpoint recognizes `gpt-5-astra`:
 
 ```yaml
 models:
-  - name: gpt-6-astra
+  - name: gpt-astra
     provider: openai
-    model: YOUR_GPT_6_ASTRA_DEPLOYMENT_ID
+    model: gpt-5-astra
     apiBase: ${{ secrets.AZURE_FOUNDRY_ENDPOINT }}
     apiKey: ${{ secrets.AZURE_FOUNDRY_KEY }}
     apiType: azure
@@ -212,11 +229,12 @@ models:
       - apply
       - autocomplete
     defaultCompletionOptions:
-      contextLength: YOUR_DEPLOYMENT_CONTEXT_LIMIT
-      maxTokens: YOUR_DEPLOYMENT_OUTPUT_LIMIT
+      contextLength: 100352
+      maxTokens: 8192
+      reasoning: false
 ```
 
-Use limits supported by the actual deployment. Add a `reasoning` option only if the deployed model and current Continue version support it. To guarantee that `jjolo` selects Astra, make it the only entry in `models`. If other models remain available, put Astra first, but note that ordering is less explicit than using a dedicated single-model configuration.
+Use limits supported by the actual deployment. The options shown match the current template and rely on the `gpt-5` compatibility naming; do not reuse older non-prefixed Astra configurations or mix in previous parameter workarounds without retesting. To guarantee that `jjolo` selects Astra, make it the only entry in `models`. If other models remain available, put Astra first, but note that ordering is less explicit than using a dedicated single-model configuration.
 
 The wrapper also prints an informational expected-model label. In `Microsoft.PowerShell_profile.ps1`, change:
 
@@ -227,7 +245,7 @@ Write-Host 'Expected default model: gpt-5.6-sol'
 to:
 
 ```powershell
-Write-Host 'Expected default model: gpt-6-astra'
+Write-Host 'Expected default model: gpt-astra'
 ```
 
 That message does not select the model; it only reports your intended default. Reload the profile and run a minimal test:
@@ -305,7 +323,7 @@ jjolo "Read @src/app.ts and fix the reported error"
 1. Sync this repository to `OneDrive\src\WindowsPowerShell`.
 2. Complete the README **Quick Start** to register `Profile.ps1`.
 3. Install Node.js and the Continue CLI as described above, then verify that `node`, `npm`, and `cn` are available on `PATH`.
-4. Copy `Continue/config.yaml.example` to `%USERPROFILE%\.continue\config.yaml` and set the deployment name.
+4. Copy `Continue/config.yaml.example` to `%USERPROFILE%\.continue\config.yaml` and verify the Azure deployment identifiers, preserving their `gpt-5` compatibility prefix.
 5. Restore the four Azure user environment variables from a password manager.
 6. Open a new terminal and run `Get-Command jjolo`.
 7. Test with `jjolo "Inspect this repository and report its Git status without changing files"`.
