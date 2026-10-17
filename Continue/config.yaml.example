@@ -47,9 +47,11 @@ models:
       - edit
       - apply
       - autocomplete
+    # Do not set `reasoning` for Astra. In Continue CLI 1.5.47,
+    # `reasoning: false` is serialized as `reasoning_effort: none`, which the
+    # chat-completions endpoint rejects when function tools are included.
     defaultCompletionOptions:
       contextLength: 100352
-      reasoning: false
     requestOptions:
       extraBodyProperties:
         max_completion_tokens: 8192
@@ -63,7 +65,7 @@ models:
       - provider: url
       - provider: tree
       - provider: currentFile
-      
+
   - name: qwen3.6-27b
     provider: openai
     model: qwen/qwen3.6-27b

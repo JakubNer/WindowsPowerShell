@@ -65,6 +65,7 @@ function jjolo {
     $initialPrompt = ($Prompt -join ' ').Trim()
     $sessionRule = @'
 Use .jjolo.md in the current directory as prior conversation context when relevant. For context, read only its first 300 lines (for example, `Get-Content -LiteralPath '.jjolo.md' -TotalCount 300`); do not read or load the entire file.
+This is a Windows PowerShell scripting environment. For shell commands, automation, file operations, validation, and short scripts, always use native PowerShell commands and syntax first. Do not use Bash, WSL, Unix utilities, Python, or another scripting language when PowerShell can perform the task. Use another runtime only when PowerShell cannot reasonably do it or the user explicitly requests it, and briefly state why.
 Use the interactive UI to show progress, reasoning summaries, and tool activity to the user.
 For every user request, update .jjolo.md before giving the final answer. Insert the newest exchange immediately below its document header. Prepend it with a direct file operation that preserves all existing content; do not use an edit tool whose read-before-edit guard would require reading the entire file. Record only these two sections: `### Prompt` containing the user's exact prompt, and `### Final response` containing exactly the final response you will give. Do not record progress, reasoning, tool activity, timestamps, status, exit codes, or other metadata in .jjolo.md.
 '@
