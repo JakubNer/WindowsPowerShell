@@ -100,10 +100,15 @@ models:
       - autocomplete
     defaultCompletionOptions:
       contextLength: 131072
-      maxTokens: 8192
       reasoning: false
       temperature: 0.1
       topP: 0.9
+    
+    requestOptions:
+      extraBodyProperties:
+        max_context_tokens: 131072
+        max_completion_tokens: 8192
+        reasoning_effort: none
     chatOptions:
       baseAgentSystemMessage: >-
         You are an autonomous coding agent. Follow these rules STRICTLY:
